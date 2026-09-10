@@ -1,0 +1,23 @@
+# Dependency and build directories
+node_modules
+dist
+
+# Environment files (configure these in Vercel project settings)
+.env
+.env.local
+.env.*.local
+
+# Logs and temp files
+*.log
+localhost-*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Electron files
+electron
+
+# Reference documentation & local SQL migrations
+*.docx
+doc_extracted.txt
+referernce_docs
+sql

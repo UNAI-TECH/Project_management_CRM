@@ -1,0 +1,141 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        navy: {
+          50: '#e8ecf4',
+          100: '#c5cfe3',
+          200: '#9aafd0',
+          300: '#6f8fbd',
+          400: '#5277b0',
+          500: '#345fa3',
+          600: '#2d559b',
+          700: '#264991',
+          800: '#1e3d88',
+          850: '#0d1836',
+          900: '#132977',
+          950: '#0a1628',
+        },
+        electric: {
+          50: '#e3f0ff',
+          100: '#b9d8ff',
+          200: '#8bc0ff',
+          300: '#5ba8ff',
+          400: '#3795ff',
+          500: '#0d82ff',
+          600: '#0075ff',
+          700: '#0065ff',
+          800: '#0054ff',
+          900: '#0036ff',
+        },
+        cyan: {
+          50: '#e0f9ff',
+          100: '#b3f1ff',
+          200: '#80e8ff',
+          300: '#4ddfff',
+          400: '#26d8ff',
+          500: '#00d1ff',
+          600: '#00bce8',
+          700: '#00a3cd',
+          800: '#008bb3',
+          900: '#006285',
+        },
+        dark: {
+          900: '#050b18',
+          800: '#0a1628',
+          700: '#0d1f3c',
+          600: '#112850',
+          500: '#162f60',
+        },
+        // Backwards compatibility for existing unai/brand references
+        unai: {
+          50: '#e3f0ff',
+          100: '#b9d8ff',
+          200: '#8bc0ff',
+          300: '#5ba8ff',
+          400: '#3795ff',
+          500: '#0d82ff',
+          600: '#0075ff',
+          700: '#0065ff',
+          800: '#0054ff',
+          900: '#132977',
+          950: '#0a1628',
+        },
+        brand: {
+          blue: '#0d82ff',
+          navy: '#0a1628',
+          royal: '#1e3d88',
+          light: '#3795ff',
+          accent: '#00d1ff',
+        }
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Outfit', 'Inter', 'system-ui', 'sans-serif'],
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+        'hero-gradient': 'linear-gradient(135deg, #050b18 0%, #0a1628 50%, #0d1f3c 100%)',
+        'card-gradient': 'linear-gradient(135deg, rgba(13, 130, 255, 0.1) 0%, rgba(0, 209, 255, 0.05) 100%)',
+        'button-gradient': 'linear-gradient(135deg, #0d82ff 0%, #00d1ff 100%)',
+        'button-hover': 'linear-gradient(135deg, #0065ff 0%, #00bce8 100%)',
+      },
+      boxShadow: {
+        'glass': '0 8px 32px 0 rgba(13, 130, 255, 0.15)',
+        'glow': '0 0 30px rgba(13, 130, 255, 0.4)',
+        'glow-cyan': '0 0 30px rgba(0, 209, 255, 0.4)',
+        'card': '0 4px 24px rgba(0, 0, 0, 0.06)',
+        'elevated': '0 20px 60px rgba(0, 0, 0, 0.15)',
+        'flat-btn': '0 1px 2px rgba(0, 0, 0, 0.05)',
+        'card-hover': '0 10px 30px -5px rgba(13, 130, 255, 0.15)',
+      },
+      backdropBlur: {
+        xs: '2px',
+      },
+      animation: {
+        'float': 'float 6s ease-in-out infinite',
+        'float-delayed': 'float 8s ease-in-out infinite 2s',
+        'pulse-glow': 'pulseGlow 3s ease-in-out infinite',
+        'gradient-shift': 'gradientShift 8s ease infinite',
+        'slide-up': 'slideUp 0.5s ease-out',
+        'fade-in': 'fadeIn 0.4s ease-out',
+        'spin-slow': 'spin 20s linear infinite',
+        'bounce-gentle': 'bounceGentle 2s ease-in-out infinite',
+      },
+      keyframes: {
+        float: {
+          '0%, 100%': { transform: 'translateY(0px)' },
+          '50%': { transform: 'translateY(-20px)' },
+        },
+        pulseGlow: {
+          '0%, 100%': { opacity: '0.6', transform: 'scale(1)' },
+          '50%': { opacity: '1', transform: 'scale(1.05)' },
+        },
+        gradientShift: {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
+        slideUp: {
+          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        bounceGentle: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-8px)' },
+        },
+      },
+    },
+  },
+  plugins: [],
+}

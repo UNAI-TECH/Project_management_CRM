@@ -1,0 +1,378 @@
+UNAI PM CRM
+Paperless Project Documentation & Task Management Platform
+System Architecture, Data Model & Complete Project Documentation
+
+Field
+Details
+Document Owner
+Kamalesh S — CTO, UNAI Tech
+Prepared For
+UNAI Tech — CTO Office
+Document Version
+v1.1 (Draft for Review) — Onboarding Platform auth model
+Product Codename
+UNAI PM CRM
+Classification
+Internal Tool — High Priority
+Source Templates Digitized
+15 project-lifecycle templates + Master Record
+
+This document analyzes the 16 Word-based project management templates currently used by the CTO office at UNAI Tech (Project Charter through Maintenance Plan, plus the Master Record) and translates the entire paper-based workflow into a single scalable, cross-platform application — built on Expo (mobile) wrapped by Electron (Windows desktop .exe) — with authentication federated through a shared Onboarding Platform (HR CRM assigns the roles, the platform proves identity to every CRM), hierarchical task assignment, and CTO-controlled document generation that exports back into the exact same template formats.
+
+1. Executive Summary
+UNAI PM CRM replaces the current Word-document-driven project lifecycle (16 templates filled and circulated manually per project) with a single application where every document is a structured, database-backed record. Employees no longer fill Word files — they fill screens; the application generates the identical Word/PDF output on demand, whenever it's needed for a client, auditor, or archive.
+Three ideas anchor the whole design:
+Identity comes from a shared Onboarding Platform, not from this app or even from HR CRM directly. Every CRM UNAI Tech runs — HR CRM, Finance CRM, PM CRM, and any future one — is a client of that one platform. HR CRM decides who exists and what role they hold; the Onboarding Platform is the only place a password ever lives.
+The CTO is the single point of structural control. Only the CTO can create projects, create/delete document records, and create/delete users' project access. Everyone else can only update the records they've been given access to — they cannot create or delete.
+Every action is a row in an audit trail. Task assignment, task submission, task verification, and document edits are all logged, which is what lets the CTO dashboard offer full combinational filtering and one-click exports — that's the paperless replacement for signature pages and status columns.
+
+2. What's Being Digitized — Source Template Inventory
+These are the 16 documents currently maintained as .docx files. Each becomes a “document type” inside the app with its own structured form and its own export layout, byte-for-byte matched to the current Word template so nothing changes for anyone who receives the exported file.
+#
+Template
+Lifecycle Phase
+Owner (fills first)
+0
+Master Record
+Runs alongside all phases
+CTO
+1
+Project Charter
+Initiate
+CTO / Sponsor
+2
+Project Plan
+Initiate → Plan
+Project Manager
+3
+Software Requirements Spec (SRS)
+Requirements
+PM / Business Analyst
+4
+Business Requirement Doc (BRD)
+Requirements
+Business Owner
+5
+Functional Specification
+Design
+PM / Tech Lead
+6
+Technical Specification
+Design
+Tech Lead
+7
+Architecture Document
+Design
+Tech Lead / Architect
+8
+UI/UX Design Document
+Design
+Designer
+9
+Sprint Plan
+Build (recurring per sprint)
+Scrum Master / TL
+10
+Test Plan
+Test
+QA Lead
+11
+Test Cases
+Test
+QA / Employees
+12
+UAT Sign-off
+Test / UAT
+Business Owner
+13
+Deployment Checklist
+Release
+Deployment Owner
+14
+Go-Live Checklist
+Release
+PM
+15
+Maintenance Plan
+Maintain
+TL / Support Owner
+
+3. Roles & Access Control Model
+3.1 Role hierarchy
+Roles are not stored or invented in PM CRM — they are read from the Onboarding Platform at login (see Section 4). HR CRM is who decides the role; the Onboarding Platform is where that decision is recorded and handed to PM CRM as a signed claim. PM CRM then scopes that role to a specific project via Project Membership, which only the CTO can create.
+Role
+Source of Truth
+Scope
+CTO (Super Admin)
+Onboarding role grant = “PM CRM: CTO”, set by HR CRM, + PM CRM super-admin flag (both must match)
+Global — every project, every employee
+Project Manager (PM)
+Onboarding role grant = “PM CRM: PM”, set by HR CRM, confirmed by Project Membership
+One or more assigned projects
+Team Lead (TL)
+Onboarding role grant = “PM CRM: TL”, set by HR CRM, confirmed by Project Membership
+Assigned project → own reporting employees
+Employee
+Onboarding role grant = “PM CRM: Employee”, set by HR CRM, confirmed by Project Membership
+Own assigned tasks & documents within the project
+
+3.2 CRUD matrix — who can Create / Read / Update / Delete what
+You asked for “CTO only should have CRUD operations and others can only have access to update.” That's implemented exactly for the structural entities below. The one deliberate exception is task creation, because you also described PM → TL → Employee task delegation — that requires PM and TL to be able to create tasks for their own reports. I've scoped that as a delegated, revocable permission rather than a structural CRUD right: the CTO can disable delegated task-creation for any project or any person at any time, every delegated task is tagged with the delegator, and the CTO can edit/delete/reassign any task in the system regardless of who created it. Flag it if you'd rather PM/TL only be able to update tasks the CTO created for them — it's a one-line permission-table change, not a schema change.
+
+Entity
+CTO
+PM
+TL
+Employee
+Projects
+Full CRUD
+Read (own)
+Read (own)
+Read (own)
+Project Membership (who's assigned)
+Full CRUD
+Read
+Read
+Read
+Project Documents (16 types)
+Full CRUD
+Update assigned sections
+Update assigned sections
+Update assigned sections
+Tasks
+Full CRUD (incl. override/delete any task)
+Create for TL/Employees in own project (delegated); Update/Verify own
+Create for Employees in own team (delegated); Update/Verify own
+Update status + submit work on own tasks only
+Task Attachments / Submissions
+Full CRUD
+Create (own uploads), Read all in project
+Create (own uploads), Read all in team
+Create (own uploads), Read own
+IT Assets
+Full CRUD
+Read (assigned to project)
+Read (assigned to project)
+Read (assigned to self)
+Users ↔ Onboarding linkage (PM CRM super-admin flag)
+Full CRUD (flag only — role grants themselves are HR CRM's)
+—
+—
+—
+
+4. Onboarding Platform & Federated Authentication Architecture
+There is no login inside PM CRM, and there's no separate login owned by HR CRM either. Both — and Finance CRM, and any CRM UNAI Tech builds after this — sit on top of one shared Onboarding Platform, built on Supabase Auth. It is the only place a work password ever exists. HR CRM's job is deciding who exists and what role they hold in which CRM; the Onboarding Platform's job is proving identity and handing each CRM a signed, role-scoped token. This is the same shape as “Sign in with Google” across Google's own products — one identity provider, many relying applications.
+4.1 The three pieces
+Onboarding Platform — a dedicated Supabase project (auth.users + a small onboarding schema) plus a lightweight backend. Hosted at onboarding.unaitech.com. This is the identity provider for the whole company, not a PM CRM component.
+HR CRM — where HR staff onboard a new hire and assign CRM roles. HR CRM never stores or sees a password; every create/role-change action it performs is written through to the Onboarding Platform over a server-to-server Admin API.
+Consumer CRMs — HR CRM's own front end, Finance CRM, and PM CRM (web subdomain + Electron desktop) are all “clients” of the Onboarding Platform. None of them authenticate anyone directly — they only accept a token the Onboarding Platform already signed.
+
+4.2 Onboarding backend flow — how a person enters the system
+HR staff creates the employee record in HR CRM: name, department, designation, and a unique work email (e.g. name@unaitech.com).
+HR CRM calls the Onboarding Platform's Admin API — a server-to-server call using a service-role key that is never exposed to any browser — to create a Supabase Auth user for that work email.
+Instead of HR typing a password on someone else's behalf, the Admin API triggers Supabase's invite-by-email flow: the new employee receives a “set your password” link on their work Gmail and chooses their own password. HR CRM, and every other CRM, remains permanently password-blind.
+HR CRM then writes one row per CRM into the Onboarding Platform's onboarding_role_grants table via the same Admin API — e.g. “PM CRM: Team Lead,” “Finance CRM: Viewer.” This is literally the “assigning roles to onboarding users” step you described.
+Any later change in HR CRM — a promotion, a project move, a resignation — fires the same Admin API call and updates onboarding_role_grants / is_active immediately. Because every CRM session is short-lived (Section 4.5), that change reaches every CRM within one token refresh, not on some separate nightly sync.
+
+4.3 Logging into a web-hosted CRM (subdomain SSO)
+Applies to HR CRM, Finance CRM, and the PM CRM web build, each on its own subdomain.
+Employee opens any CRM subdomain (e.g. pm.unaitech.com) without an active session and is redirected to the single shared login page at onboarding.unaitech.com.
+They sign in once with their work email + password, checked by Supabase Auth inside the Onboarding Platform — nowhere else.
+The Onboarding Platform checks onboarding_role_grants for that specific CRM. No active grant → the flow stops here with “No access to PM CRM — contact HR,” and PM CRM is never reached.
+If a grant exists, the Onboarding Platform issues a one-time signed authorization code and redirects the browser to https://pm.unaitech.com/auth/callback?code=...&state=....
+PM CRM's own backend exchanges that code server-side for a PM-CRM-scoped session JWT. This exchange happens machine-to-machine, so the code is useless to anyone who intercepts it in the browser.
+PM CRM sets its own session from that JWT — the employee is in. Because step 2 also set a shared session cookie on the root unaitech.com domain, moving to another CRM subdomain repeats steps 3–6 automatically, with no password re-entry. That's the SSO part.
+
+4.4 Logging into the PM CRM desktop app (.exe)
+A desktop app can't rely on shared browser cookies, and it must never show its own login form — that would mean the app's own code sees the password. So the desktop flow hands the entire login step to the machine's real browser and gets back only a one-time code, using the OAuth2 Authorization Code + PKCE pattern that's the standard approach for native apps (the same shape Slack, VS Code, and 1Password's desktop apps use).
+The PM CRM desktop app opens the system's default browser to onboarding.unaitech.com/login, tagged with client=pm-crm-desktop, a redirect target of the custom URI unaipmcrm://auth-callback, and a PKCE challenge generated locally by the app itself.
+If the employee already has a live onboarding.unaitech.com session in that browser, this is invisible — otherwise they log in exactly as in Section 4.3.
+The Onboarding Platform checks the PM CRM role grant exactly as before. Instead of redirecting to a subdomain, it redirects the browser to unaipmcrm://auth-callback?code=....
+The operating system hands that link to the PM CRM desktop app, registered as the handler for unaipmcrm:// at install time — the running app receives the code directly, with no copy-pasting.
+The desktop app exchanges the code, together with the PKCE secret only it knows, directly with the Onboarding Platform over HTTPS — receiving a short-lived session JWT and a longer-lived refresh token.
+The refresh token is stored encrypted in the OS credential store (Windows Credential Manager, via a library like keytar). Next launch, the app renews its session silently in the background — no browser hop needed — until that refresh token itself expires or HR revokes access.
+
+4.5 Session control & revocation
+Every token issued — web or desktop — is recorded in a central auth_sessions table on the Onboarding Platform, so one action (“revoke all sessions for this employee”) logs them out of every CRM, on every device, at once.
+Because session JWTs are deliberately short-lived (e.g. 15 minutes), a revocation or a role change in HR CRM takes effect everywhere within one refresh cycle — there's no CRM quietly running on stale access.
+This keeps the earlier CRUD boundary intact: HR CRM controls who exists and what CRM roles they hold; the CTO still controls everything that happens once someone's inside PM CRM specifically (Section 3.2). The two systems don't compete for authority — identity vs. in-app control are cleanly separate concerns.
+
+4.6 Edge cases
+Not in the Onboarding Platform at all → can't even reach a CRM login screen; rejected at onboarding.unaitech.com itself.
+Has an onboarding account but no PM CRM role grant → SSO login completes fine, but PM CRM shows “No PM CRM access — contact HR” and loads nothing.
+Has a PM CRM grant but isn't yet a Project Member anywhere → same as before: dashboard shows “No project assigned — contact your CTO.” This is the state a brand-new intern lands in until the CTO assigns them.
+Onboarding Platform temporarily unreachable → an already-issued, unexpired session JWT keeps working locally until its short TTL lapses; no new logins and no token refreshes can complete until the platform is back — by design, since this is now the single point every CRM depends on (see Section 13).
+
+5. System Architecture
+5.1 Application layer — one codebase, two shells
+A single Expo (React Native + TypeScript) codebase produces:
+A mobile app (iOS/Android via EAS Build) for TLs and employees working on-site (e.g. My Vidyon installation visits), including offline task viewing/submission with a local sync queue.
+A Windows desktop .exe by exporting the Expo project for web and packaging that build inside Electron — this is what the CTO and PMs use for the heavier dashboard/filtering/export work at a desk.
+Shared UI kit (NativeWind/Tailwind-for-RN or Tamagui) so screens, components and business logic are written once and simply rendered natively on mobile and via the Electron webview on desktop — matches the frontend-first, single-source pattern you've used on SamruddiSave and UNAI Flow.
+
+5.2 Backend & data layer
+Layer
+Technology
+Responsibility
+Auth Bridge
+FastAPI microservice
+Performs the OAuth2 code–exchange with the Onboarding Platform (subdomain redirect for web, PKCE + custom-protocol callback for desktop — Section 4); validates every incoming JWT's signature and audience. PM CRM itself never talks to HR CRM, and never sees a password
+API Layer
+FastAPI
+Task engine, document engine, notifications, filtering/export endpoints
+Database
+Supabase (Postgres)
+All structured data — projects, documents, tasks, audit log — with Row-Level Security enforcing the CRUD matrix at the database layer, not just in app code
+File Storage
+Supabase Storage
+Reference images, uploaded work files, generated .docx/.pdf exports
+Realtime
+Supabase Realtime
+Live task-status updates on CTO/PM/TL dashboards without polling
+Document Export Service
+Node (docx-js) / LibreOffice headless
+Renders stored JSON form data back into the original Word template layout on demand
+
+Why RLS matters here specifically: it means the CRUD matrix in Section 3.2 is enforced even if there's a bug in the app UI — a TL's device physically cannot receive a Postgres row it isn't entitled to, because the policy checks the JWT's project_ids and role before the row leaves the database.
+
+6. Core Data Model
+6.1 Two database scopes — don't mix these up
+With the Onboarding Platform in the picture, there are now two clearly separate databases, owned by two different teams:
+Onboarding Platform database (shared, owned by HR/IT, outside PM CRM entirely): auth.users (Supabase Auth), onboarding_role_grants, oauth_clients, auth_sessions. PM CRM never writes to this database — it only ever receives a signed JWT derived from it.
+PM CRM's own database (a separate Supabase project, owned by the CTO office): everything in the table below. employees_cache is the one table that bridges the two — it's populated purely from the claims inside each login JWT, not by a separate sync job or direct database link.
+
+Every PM CRM table includes created_at, updated_at, and is written to audit_log on every INSERT/UPDATE/DELETE via a Postgres trigger — that trigger is what gives the CTO dashboard its full history without any extra work from users.
+6.2 PM CRM tables
+Table
+Key Fields
+Purpose
+employees_cache
+employee_id (PK, from Onboarding Platform), name, email, pm_crm_role, department, designation, is_active, last_synced_at
+Read-only local mirror, populated from the login JWT's claims — not from HR CRM or the Onboarding Platform directly
+projects
+id, project_code (unique), name, sponsor, status, priority, department, start_date, target_end_date, created_by
+One row per project; only the CTO can insert/update/delete
+project_members
+project_id, employee_id, project_role (PM/TL/Employee), reports_to, assigned_by, assigned_at
+Defines who's on a project and the reporting chain used to validate task delegation
+project_documents
+id, project_id, doc_type (1 of 16), version, status (draft/in_review/approved), content (JSONB form data), updated_by
+One structured record per template per project — this is the digitized Word document
+document_versions
+id, document_id, version_no, snapshot (JSONB), changed_by, changed_at
+Full version history — replaces the manual “Version / Date / Description of Changes” table in every template
+tasks
+id, project_id, parent_task_id, title, description, assigned_by, assigned_to, status (open/submitted/verified/closed/reopened), priority, due_date
+One row per task in the CTO→PM→TL→Employee chain
+task_reference_files
+id, task_id, type (image/file/url), url, uploaded_by
+Reference material the assigner attaches when creating the task
+task_submissions
+id, task_id, submitted_by, file_urls[], reference_urls[], notes, submitted_at
+The employee's completed work, attached for the assigner to review
+task_status_log
+id, task_id, from_status, to_status, changed_by, remarks, changed_at
+Every open/submit/verify/close/reopen transition — powers the combinational filters on the CTO dashboard
+audit_log
+id, actor_id, action, entity_type, entity_id, before, after, occurred_at
+System-wide append-only trail of every create/update/delete across every table
+
+7. Document Engine — Forms In, Exact Templates Out
+7.1 How a template becomes a form
+Each of the 16 templates is converted once into a JSON form schema that mirrors its exact sections (e.g. the Project Charter schema has purpose, objectives[], scope_in[], scope_out[], milestones[table], stakeholders[table], risks[], budget, approval). The schema — not the app's code — defines the form, so adding a 17th template later (Section 11, Scalability) never requires a new app release.
+7.2 Filling and versioning
+Whoever the CTO has granted access to a document (per Section 3.2) fills their sections directly on screen; the record saves as project_documents.content.
+Every save creates a document_versions row — nobody can silently overwrite history, and the CTO can diff or roll back to any prior version.
+A document's status (draft → in_review → approved) is itself a field the CTO controls, standing in for the old “Approval” signature block.
+7.3 Exporting — the paperless part that still produces paper when you need it
+At any point, any authorized viewer can hit “Download” and the Document Export Service renders the current JSONB content back into a .docx (and optionally PDF) laid out identically to the templates you uploaded — same headers, same tables, same Document Control block, now auto-filled instead of blank. Downloads can be filtered and bulk-exported (e.g. “every approved Test Case document across every active project this quarter”) as a ZIP, which is the direct replacement for digging through a shared drive of Word files.
+
+8. Task Assignment & Verification Workflow
+8.1 Assignment chain
+Task creation follows the reporting chain established in project_members: CTO → PM, PM → TL, TL → Employee. The assigner can attach reference images, files, or URLs at creation time so the assignee has everything they need without a separate email or WhatsApp message.
+8.2 Status lifecycle
+Status
+Set By
+Meaning
+Open
+Assigner, at creation (or reopen)
+Assigned, not yet started/submitted
+Submitted
+Assignee
+Employee has uploaded work files/URLs and marked it ready for review
+Verified & Closed
+Assigner (or CTO)
+Reviewer accepted the submission — task is done
+Reopened
+Assigner (or CTO)
+Reviewer rejected the submission with remarks; status returns to Open and the cycle repeats
+
+Every transition writes a task_status_log row with an optional remark, so a task that bounced between Submitted and Reopened three times before closing has a complete, timestamped record — visible instantly on the CTO dashboard.
+
+9. Dashboards & Reporting
+Dashboard
+Scope
+Key capability
+CTO Dashboard
+Every project, every employee, every document, every task, org-wide
+Combinational filter builder (project × assignee × status × date range × priority × doc type, AND/OR combinations) with CSV/XLSX/PDF export of the filtered view, plus full audit-log drill-down
+PM Dashboard
+Own project(s), full reporting chain beneath them
+Same filter/export tools, scoped to their project(s)
+TL Dashboard
+Own team within the project
+Task board for their direct reports, document sections they own
+Employee Dashboard
+Own tasks and own document contributions only
+Kanban view (Open / Submitted / Verified-Closed / Reopened), upload work, view reference material
+
+10. Security & Enforcement
+No local password store — not in PM CRM, and not in HR CRM either. Only the Onboarding Platform ever holds one, which removes an entire class of credential-leak risk from every other system UNAI Tech runs.
+Every table has Row-Level Security policies keyed off the session JWT's employee_id, pm_crm_role, and project_ids — enforced at the database, not just hidden in the UI.
+INSERT and DELETE policies are CTO-only (or CTO-delegated for task creation, per Section 3.2) at the database level, so even a compromised or buggy client can't create/delete records it shouldn't.
+Every mutation is captured by trigger into audit_log — this is the mechanism that lets you say “every process is fully controlled by the CTO” and actually mean it, since nothing can happen invisibly.
+Access can be pulled company-wide from one place: revoking an employee's Onboarding Platform sessions (Section 4.5) logs them out of PM CRM, HR CRM, and Finance CRM simultaneously — offboarding is one action, not one per CRM.
+
+11. Scalability & Upgrade Path
+organization_id is included on every table from day one, even with a single tenant today — so the same platform can later be offered to other teams or even externally (in the spirit of My Vidyon / UNAI Flow) without a schema rewrite.
+Document templates are versioned JSON schemas, not hardcoded forms — the CTO office can add a 17th template type through an admin screen, no app release required.
+Backend is split into independently deployable services (Auth Bridge, Task Engine, Document Engine, Notification Engine) behind a single API gateway, so any one service can scale or be rebuilt without touching the others.
+Mobile is offline-first (local cache + sync queue) for field work like on-site installs, syncing automatically once connectivity returns.
+
+12. Phased Build Roadmap
+Phase
+Duration (indicative)
+Delivers
+v0 — Mock
+1–2 weeks
+Static Expo + Electron shell, mock login, 2 sample document forms, no real backend — for UI/flow sign-off
+v1 — Core Production
+4–6 weeks
+Live Onboarding Platform integration (web SSO + desktop PKCE), full Supabase schema, all 16 document types with export, complete task assignment/verification loop, CTO dashboard with filtering/export
+v2 — Advanced
+Ongoing
+Realtime notifications, offline sync, analytics views, IT asset module, multi-project/org support
+
+13. Risks & Dependencies
+Risk
+Impact
+Mitigation
+Onboarding Platform becomes unavailable
+No new logins or token refreshes across every CRM company-wide, not just PM CRM
+Short-TTL grace period on already-issued sessions (Section 4.6); this component now needs the highest uptime bar in the whole stack — budget for it accordingly
+Onboarding Platform doesn't exist yet as a standalone service
+The whole federated model in Section 4 has nothing to build against
+Stand up the Onboarding Platform (Supabase Auth + onboarding schema + Admin API) as its own first deliverable, before PM CRM's Auth Bridge — everything else in this document can be built in parallel once that contract is fixed
+Desktop custom-protocol handler not registered / blocked on a user's machine
+unaipmcrm:// callback silently fails to reach the app after browser login
+Installer registers the protocol at install time; fall back to a manual “enter this code” screen if the OS handoff doesn't fire
+Business changes one of the 16 templates
+Form schema and export layout go out of sync
+Schema versioning (Section 11) means old documents render with the schema they were created under; new ones use the updated schema
+Electron/Expo-web feature gaps
+A native-only library breaks the desktop build
+Standardize on Expo-web-compatible libraries only; treat Electron as “web build in a window,” not a separate codebase
+
+
+
+Open question for you before build starts: does the Onboarding Platform already exist anywhere (even as a rough Supabase Auth setup), or does it need to be stood up from zero? That's the one dependency this entire plan sits on — everything else (PM CRM's own schema, task engine, document engine) can be built in parallel the moment that contract is fixed.
