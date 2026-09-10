@@ -339,6 +339,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const canAccessAuditTrail = hasPermission('audit:view_ledger');
   const canManageUsers = hasPermission('admin:manage_users');
   const isFullAccessAdmin = isSuperAdmin;
+  const documentBranding: DocumentBrandingTemplate = user?.documentBranding || DEFAULT_BRANDING_TEMPLATE;
 
   return (
     <AuthContext.Provider
